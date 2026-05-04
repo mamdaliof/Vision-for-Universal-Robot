@@ -33,6 +33,36 @@ def find_board_contour(blurred_img):
     
     return hull, thresh
 
+def extract_corners(hull):
+    # Approximate polygon
+    epsilon = 0.02 * cv2.arcLength(hull, True)
+    approx = cv2.approxPolyDP(hull, epsilon, True)
+    
+    if len(approx) == 4:
+        return approx.reshape(4, 2)
+    else:
+        # Fallback: find corners based on bounding box extremes
+        rect = cv2.minAreaRect(hull)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        return box
+
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    pts = np.array(pts, dtype="float32")
+    
+    # top-left point has smallest sum, bottom-right has largest sum
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    
+    # top-right point has smallest difference, bottom-left has largest difference
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    
+    return rect
+
 if __name__ == "__main__":
     # Get absolute path to Data folder relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -44,7 +74,9 @@ if __name__ == "__main__":
         hull, mask = find_board_contour(processed)
         
         if hull is not None:
-            print(f"Found hull with {len(hull)} points.")
+            corners = extract_corners(hull)
+            ordered_corners = order_points(corners)
+            print("Ordered corners:\n", ordered_corners)
         else:
             print("No contours found.")
             
