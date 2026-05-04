@@ -16,6 +16,23 @@ def preprocess_image(img):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     return blurred
 
+def find_board_contour(blurred_img):
+    # Use Otsu's thresholding for bimodal distribution (light board, dark background)
+    _, thresh = cv2.threshold(blurred_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
+        return None, thresh
+        
+    # Find largest contour by area
+    largest_contour = max(contours, key=cv2.contourArea)
+    
+    # Apply Convex Hull
+    hull = cv2.convexHull(largest_contour)
+    
+    return hull, thresh
+
 if __name__ == "__main__":
     # Get absolute path to Data folder relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +41,12 @@ if __name__ == "__main__":
     try:
         img = load_image(img_path)
         processed = preprocess_image(img)
-        print("Preprocessing successful. Image shape:", img.shape)
+        hull, mask = find_board_contour(processed)
+        
+        if hull is not None:
+            print(f"Found hull with {len(hull)} points.")
+        else:
+            print("No contours found.")
+            
     except Exception as e:
         print(f"Error: {e}")
