@@ -64,61 +64,161 @@ def find_board_contour(blurred_img):
     return hull, thresh
 
 def extract_corners(hull):
+    def unique_points(pts, eps=1.0):
+        unique = []
+        for p in pts:
+            if not unique:
+                unique.append(p)
+            else:
+                dists = [np.linalg.norm(p - q) for q in unique]
+                if all(d > eps for d in dists):
+                    unique.append(p)
+        return np.array(unique, dtype=np.float32)
+
+    def reduce_to_quad(pts):
+        """
+        Iteratively remove the point that is most collinear with its two
+        neighbors (i.e., contributes the smallest cross-product area),
+        until we have exactly 4 points.
+        """
+        pts = list(pts)
+        while len(pts) > 4:
+            min_area = float('inf')
+            min_idx = -1
+            n = len(pts)
+            for i in range(n):
+                # Triangle formed by previous, current, next point
+                prev_p = np.array(pts[(i - 1) % n])
+                curr_p = np.array(pts[i])
+                next_p = np.array(pts[(i + 1) % n])
+                # Area of triangle via cross product
+                area = abs(np.cross(curr_p - prev_p, next_p - prev_p)) / 2.0
+                if area < min_area:
+                    min_area = area
+                    min_idx = i
+            pts.pop(min_idx)
+        return np.array(pts, dtype=np.float32)
+
     # Approximate polygon
     epsilon = 0.02 * cv2.arcLength(hull, True)
-    approx = cv2.approxPolyDP(hull, epsilon, True)
-    
-    if len(approx) == 4:
-        return approx.reshape(4, 2)
-    else:
-        # Fallback: find corners based on bounding box extremes
-        rect = cv2.minAreaRect(hull)
-        box = cv2.boxPoints(rect)
-        box = np.int0(box)
-        return box
+    approx = cv2.approxPolyDP(hull, epsilon, True)  # shape (N,1,2)
+
+    # Flatten to (N,2) and float32
+    approx = approx.reshape(-1, 2).astype("float32")
+
+    # Remove near-duplicate points
+    approx_unique = unique_points(approx, eps=2.0)
+
+    # Case 1: exactly 4 -> use them directly
+    if len(approx_unique) == 4:
+        return approx_unique
+
+    # Case 2: more than 4 (e.g. pentagon) -> reduce by removing the most
+    # collinear vertex until we have 4
+    if len(approx_unique) > 4:
+        return reduce_to_quad(approx_unique)
+
+    # Case 3: fewer than 4 -> fall back to minAreaRect
+    rect = cv2.minAreaRect(hull)
+    box = cv2.boxPoints(rect)
+    box_unique = unique_points(box, eps=2.0)
+
+    if len(box_unique) == 4:
+        return box_unique
+
+    return None
 
 def order_points(pts):
-    rect = np.zeros((4, 2), dtype="float32")
     pts = np.array(pts, dtype="float32")
-    
-    # top-left point has smallest sum, bottom-right has largest sum
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    
-    # top-right point has smallest difference, bottom-left has largest difference
-    diff = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(diff)]
-    rect[3] = pts[np.argmax(diff)]
-    
-    return rect
+    if pts.shape[0] != 4:
+        raise ValueError(f"order_points expects 4 points, got {pts.shape[0]}")
 
-def warp_perspective(img, ordered_corners):
+    # Compute centroid
+    cx, cy = pts[:, 0].mean(), pts[:, 1].mean()
+
+    # Sort by angle from centroid (atan2 gives clockwise order starting from top-right)
+    def angle_from_centroid(p):
+        return np.arctan2(p[1] - cy, p[0] - cx)
+
+    sorted_pts = sorted(pts, key=angle_from_centroid)
+    sorted_pts = np.array(sorted_pts, dtype="float32")
+
+    # sorted_pts are in clockwise order starting from the point most to the right
+    # Re-arrange to: top-left, top-right, bottom-right, bottom-left
+    # Find the top-left: point with minimum sum (x+y)
+    s = sorted_pts.sum(axis=1)
+    tl_idx = np.argmin(s)
+
+    # Rotate the array so top-left is first
+    ordered = np.roll(sorted_pts, -tl_idx, axis=0)
+
+    return ordered  # [top-left, top-right, bottom-right, bottom-left]
+
+
+def warp_perspective(
+    img,
+    ordered_corners,
+    mode="static",
+    width_mm=29*10,
+    height_mm=20*10,
+    px_per_mm=2.0
+):
     (tl, tr, br, bl) = ordered_corners
-    
-    # Compute the width of the new image
-    widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-    widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-    maxWidth = max(int(widthA), int(widthB))
-    
-    # Compute the height of the new image
-    heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-    heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-    maxHeight = max(int(heightA), int(heightB))
-    
-    # Create target points based on max dimensions
-    dst = np.array([
-        [0, 0],
-        [maxWidth - 1, 0],
-        [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]
-    ], dtype="float32")
-    
-    # Calculate the perspective transform matrix and warp
-    M = cv2.getPerspectiveTransform(ordered_corners, dst)
-    warped = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
-    
-    return warped
+
+    if mode == "static":
+        # Measure the projected width and height of the detected quad
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        projected_width = (widthA + widthB) / 2.0
+
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        projected_height = (heightA + heightB) / 2.0
+
+        # Assign long side as width, short side as height
+        long_mm  = max(width_mm, height_mm)
+        short_mm = min(width_mm, height_mm)
+
+        if projected_width >= projected_height:
+            # Board is landscape in image -> width_mm stays as width
+            target_width  = int(long_mm  * px_per_mm)
+            target_height = int(short_mm * px_per_mm)
+        else:
+            # Board is portrait in image -> swap so long side is still width
+            target_width  = int(short_mm * px_per_mm)
+            target_height = int(long_mm  * px_per_mm)
+
+        dst = np.array([
+            [0, 0],
+            [target_width - 1, 0],
+            [target_width - 1, target_height - 1],
+            [0, target_height - 1]
+        ], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(ordered_corners, dst)
+        warped = cv2.warpPerspective(img, M, (target_width, target_height))
+        return warped
+
+    else:
+        # --- DYNAMIC mode: unchanged ---
+        widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+        widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+        maxWidth = max(int(widthA), int(widthB))
+
+        heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+        heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+        maxHeight = max(int(heightA), int(heightB))
+
+        dst = np.array([
+            [0, 0],
+            [maxWidth - 1, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight - 1]
+        ], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(ordered_corners, dst)
+        warped = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
+        return warped
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
