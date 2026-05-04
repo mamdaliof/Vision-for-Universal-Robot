@@ -91,63 +91,76 @@ def warp_perspective(img, ordered_corners):
     return warped
 
 if __name__ == "__main__":
-    # Get absolute path to Data folder relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    img_path = os.path.join(script_dir, "Data", "image_1.jpg")
+    data_dir = os.path.join(script_dir, "Data")
+    results_dir = os.path.join(script_dir, "results")
     
-    try:
-        img = load_image(img_path)
-        processed = preprocess_image(img)
-        hull, mask = find_board_contour(processed)
+    # Create results folder if it doesn't exist
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+        print(f"Created directory: {results_dir}")
+
+    image_extensions = (".jpg", ".jpeg", ".png", ".bmp")
+    image_files = [f for f in os.listdir(data_dir) if f.lower().endswith(image_extensions)]
+    
+    if not image_files:
+        print(f"No images found in {data_dir}")
+    else:
+        print(f"Processing {len(image_files)} images...")
+
+    for filename in image_files:
+        img_path = os.path.join(data_dir, filename)
+        print(f"Processing {filename}...", end=" ")
         
-        if hull is not None:
-            corners = extract_corners(hull)
-            ordered_corners = order_points(corners)
-            warped_img = warp_perspective(img, ordered_corners)
+        try:
+            img = load_image(img_path)
+            processed = preprocess_image(img)
+            hull, mask = find_board_contour(processed)
             
-            # Prepare visualization
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            warped_rgb = cv2.cvtColor(warped_img, cv2.COLOR_BGR2RGB)
-            
-            # Draw hull and corners on a copy of the original image
-            annotated_img = img_rgb.copy()
-            cv2.drawContours(annotated_img, [hull], -1, (0, 255, 0), 2)
-            for point in ordered_corners:
-                x, y = int(point[0]), int(point[1])
-                cv2.circle(annotated_img, (x, y), 10, (255, 0, 0), -1)
-            
-            # Create a 2x2 subplot grid
-            fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-            
-            # Original + Contours & Corners
-            axs[0, 0].imshow(annotated_img)
-            axs[0, 0].set_title('Original with Hull & Corners')
-            axs[0, 0].axis('off')
-            
-            # Thresholded Mask
-            axs[0, 1].imshow(mask, cmap='gray')
-            axs[0, 1].set_title('Thresholded Mask')
-            axs[0, 1].axis('off')
-            
-            # Draw hull on blank canvas
-            hull_canvas = np.zeros_like(mask)
-            cv2.drawContours(hull_canvas, [hull], -1, 255, thickness=cv2.FILLED)
-            axs[1, 0].imshow(hull_canvas, cmap='gray')
-            axs[1, 0].set_title('Convex Hull Region')
-            axs[1, 0].axis('off')
-            
-            # Final Warped Image
-            axs[1, 1].imshow(warped_rgb)
-            axs[1, 1].set_title('Warped Top-Down View')
-            axs[1, 1].axis('off')
-            
-            plt.tight_layout()
-            output_plot = os.path.join(script_dir, "result_visualization.png")
-            plt.savefig(output_plot)
-            print(f"Visualization saved as {output_plot}")
-            
-        else:
-            print("No contours found.")
-            
-    except Exception as e:
-        print(f"Error: {e}")
+            if hull is not None:
+                corners = extract_corners(hull)
+                ordered_corners = order_points(corners)
+                warped_img = warp_perspective(img, ordered_corners)
+                
+                # Prepare visualization
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                warped_rgb = cv2.cvtColor(warped_img, cv2.COLOR_BGR2RGB)
+                
+                annotated_img = img_rgb.copy()
+                cv2.drawContours(annotated_img, [hull], -1, (0, 255, 0), 2)
+                for point in ordered_corners:
+                    x, y = int(point[0]), int(point[1])
+                    cv2.circle(annotated_img, (x, y), 10, (255, 0, 0), -1)
+                
+                fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+                axs[0, 0].imshow(annotated_img)
+                axs[0, 0].set_title('Original with Hull & Corners')
+                axs[0, 0].axis('off')
+                
+                axs[0, 1].imshow(mask, cmap='gray')
+                axs[0, 1].set_title('Thresholded Mask')
+                axs[0, 1].axis('off')
+                
+                hull_canvas = np.zeros_like(mask)
+                cv2.drawContours(hull_canvas, [hull], -1, 255, thickness=cv2.FILLED)
+                axs[1, 0].imshow(hull_canvas, cmap='gray')
+                axs[1, 0].set_title('Convex Hull Region')
+                axs[1, 0].axis('off')
+                
+                axs[1, 1].imshow(warped_rgb)
+                axs[1, 1].set_title('Warped Top-Down View')
+                axs[1, 1].axis('off')
+                
+                plt.tight_layout()
+                output_name = f"result_{os.path.splitext(filename)[0]}.png"
+                output_path = os.path.join(results_dir, output_name)
+                plt.savefig(output_path)
+                plt.close(fig) # Close to free memory
+                print(f"Saved to {output_name}")
+            else:
+                print("No contours found.")
+                
+        except Exception as e:
+            print(f"Error processing {filename}: {e}")
+
+    print("\nBatch processing complete.")
