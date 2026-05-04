@@ -11,6 +11,36 @@ def load_image(image_path):
         raise ValueError(f"Failed to load image at {image_path}")
     return img
 
+def clean_background(img):
+    """
+    Isolates the largest dark object (the surface) by creating a mask.
+    Sets everything outside this object to black.
+    """
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    # Threshold to find dark regions (inverted binary)
+    # Background is likely light, surface is dark
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
+        return img
+        
+    # Find the largest contour (the dark surface)
+    largest_contour = max(contours, key=cv2.contourArea)
+    
+    # Create a black mask of the same size as the image
+    mask = np.zeros(gray.shape, dtype=np.uint8)
+    
+    # Draw the largest contour filled with white (255) on the mask
+    cv2.drawContours(mask, [largest_contour], -1, 255, thickness=cv2.FILLED)
+    
+    # Apply the mask to the original image
+    cleaned_img = cv2.bitwise_and(img, img, mask=mask)
+    
+    return cleaned_img
+
 def preprocess_image(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -114,6 +144,7 @@ if __name__ == "__main__":
         
         try:
             img = load_image(img_path)
+            img = clean_background(img)
             processed = preprocess_image(img)
             hull, mask = find_board_contour(processed)
             
