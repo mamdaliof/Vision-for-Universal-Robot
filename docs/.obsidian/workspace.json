@@ -1,0 +1,201 @@
+{
+  "main": {
+    "id": "f842a2d9c5e6026d",
+    "type": "split",
+    "children": [
+      {
+        "id": "d194684488d95698",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "27453772f9029d20",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "17e70dc30e350e10",
+    "type": "split",
+    "children": [
+      {
+        "id": "9c32b8c6960752c2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "64d0009d57e68040",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "41ab69978d534189",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "554d3f554e05d471",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 597.5
+  },
+  "right": {
+    "id": "f2c4f11af0db5ee7",
+    "type": "split",
+    "children": [
+      {
+        "id": "0716a6ab2329191d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2d80b87aabc78265",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "c49dc1c3fda97916",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "5a02e1c967233fcc",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "884e389a34cfd04d",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "d3518e941fa03ce3",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "27453772f9029d20",
+  "lastOpenFiles": [
+    "Vision/ZIVID M-HD2-MR60/Commissioning Protocol.md",
+    "Vision/ZIVID M-HD2-MR60/System Architecture & Network Topology.md",
+    "Vision/ZIVID M-HD2-MR60/Physical Configurations.md",
+    "Vision/ZIVID M-HD2-MR60/Hardware Specifications & Mounting Baseline.md",
+    "attachments/pickit_datasheets-M-HD2-MR60.pdf",
+    "vision_system_project_report.md",
+    "attachments/pickit_datasheet-Processor_3.0A.pdf",
+    "attachments",
+    "Untitled.md",
+    "templates/datasheet evaluation.md",
+    "templates/daily log.md",
+    "templates/concept.md",
+    "templates/paper report.md",
+    "templates/research-note.md",
+    "Vision/ZIVID M-HD2-MR60",
+    "Vision",
+    "templates/implementation-log.md",
+    "templates",
+    "superpowers/specs/2026-05-04-chessboard-perspective-design.md"
+  ]
+}
